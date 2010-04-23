@@ -5,6 +5,9 @@ import java.util.Hashtable;
 import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.TagNode;
 import java.net.URL;
+import java.net.URLConnection;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 /**
  * A Java object representation of an Open Graph enabled webpage
@@ -32,16 +35,39 @@ public class OpenGraph {
     /**
      * Fetch the open graph representation from a web site
      * @param url The address to the web page to fetch Open Graph data
+     * @param ignoreSpecErrors Set this option to true if you don't wish to have an exception throw if the page does not conform to the basic 4 attributes
      * @throws java.io.IOException If a network error occurs, the HTML parser will throw an IO Exception
      * @throws java.lang.Exception A generic exception is throw if the specific page fails to conform to the basic Open Graph standard as define by the constant REQUIRED_META
      */
-    public OpenGraph(String url) throws java.io.IOException, Exception {
+    public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception {
         //init the attribute storage
         metaAttributes = new Hashtable<String, String>();
         pageUrl = url;
-        //download the (X)HTML content
+        
+        //download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
+        URL pageURL = new URL(url);
+        URLConnection siteConnection = pageURL.openConnection();
+        BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream()));
+        String inputLine;
+        StringBuffer headContents = new StringBuffer();
+        
+        while ((inputLine = dis.readLine()) != null) {
+            if (inputLine.contains("</head>")) {
+                inputLine = inputLine.substring(0, inputLine.indexOf("</head>") + 7);
+                inputLine = inputLine.concat("<body></body></html>");
+                headContents.append(inputLine + "\r\n");
+                break;
+            }
+
+            headContents.append(inputLine + "\r\n");
+                
+        }
+
+        String headContentsStr = headContents.toString();
+
         HtmlCleaner cleaner = new HtmlCleaner();
-        TagNode pageData = cleaner.clean(new URL(url));
+        //parse the string HTML
+        TagNode pageData = cleaner.clean(headContentsStr);
         //open only the meta tags
         TagNode[] metaData = pageData.getElementsByName("meta", true);
         for (TagNode metaElement : metaData) {
@@ -53,9 +79,11 @@ public class OpenGraph {
         /**
          * Check that page conforms to Open Graph protocol
          */
-        for (String req : REQUIRED_META) {
-            if (!metaAttributes.containsKey(req))
-                throw new Exception("Does not conform to Open Graph protocol");
+        if (!ignoreSpecErrors) {
+            for (String req : REQUIRED_META) {
+                if (!metaAttributes.containsKey(req))
+                    throw new Exception("Does not conform to Open Graph protocol");
+            }
         }
 
         /**
