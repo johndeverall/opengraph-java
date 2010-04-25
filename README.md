@@ -6,6 +6,7 @@ Due to the lack of useful native DOM parsers this class implements the HTMLClean
 ## Usage ##
 > OpenGraph testPage = new OpenGraph("http://uk.rottentomatoes.com/m/1217700-kick_ass");
 > String title = testPage.getMeta("title");
+> String type = testPage.getContent("type");
 
 ## Features ##
 * Hashtable like representation of an Open Graph page
