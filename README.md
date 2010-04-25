@@ -5,7 +5,9 @@ This project is entirely open source due to the size of the code, so please go n
 Due to the lack of useful native DOM parsers this class implements the HTMLCleaner library (available at http://htmlcleaner.sourceforge.net/index.php), please find the license for it at the bottom of this readme. There is the hope to remove reliance on third party libraries at a later stage.
 ## Usage ##
 > OpenGraph testPage = new OpenGraph("http://uk.rottentomatoes.com/m/1217700-kick_ass");
+
 > String title = testPage.getMeta("title");
+
 > String type = testPage.getContent("type");
 
 ## Features ##
