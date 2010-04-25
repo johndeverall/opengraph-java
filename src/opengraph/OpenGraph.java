@@ -1,22 +1,29 @@
 package opengraph;
 
 import java.io.IOException;
-import java.util.Hashtable;
-import org.htmlcleaner.HtmlCleaner;
-import org.htmlcleaner.TagNode;
-import java.net.URL;
-import java.net.URLConnection;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
+import java.util.Hashtable;
+import java.util.Set;
+
+import org.htmlcleaner.HtmlCleaner;
+import org.htmlcleaner.TagNode;
+
+import java.net.URL;
+import java.net.URLConnection;
+
 /**
  * A Java object representation of an Open Graph enabled webpage
+ * A simplified layer over a Hastable
  * @author Callum Jones
  */
 public class OpenGraph {
     private String pageUrl;
     private Hashtable<String, String> metaAttributes;
     private String baseType;
+    private boolean isImported; //determine if the object is a new incarnation or representation of a web page
+    private boolean hasChanged; //track if object has been changed
 
     public final static String[] REQUIRED_META = new String[]{"title", "type", "image", "url" };
     
@@ -32,6 +39,15 @@ public class OpenGraph {
                 BASE_TYPES.put("website", new String[] {"blog", "website"});
 	}
 
+   /**
+    * Create an open graph representation for generating your own Open Graph object
+    */
+    public OpenGraph() {
+        metaAttributes = new Hashtable<String, String>();
+        hasChanged = false;
+        isImported = false;
+    }
+
     /**
      * Fetch the open graph representation from a web site
      * @param url The address to the web page to fetch Open Graph data
@@ -40,8 +56,10 @@ public class OpenGraph {
      * @throws java.lang.Exception A generic exception is throw if the specific page fails to conform to the basic Open Graph standard as define by the constant REQUIRED_META
      */
     public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception {
+        this();
+        isImported = true;
         //init the attribute storage
-        metaAttributes = new Hashtable<String, String>();
+        
         pageUrl = url;
         
         //download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
@@ -50,7 +68,8 @@ public class OpenGraph {
         BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream()));
         String inputLine;
         StringBuffer headContents = new StringBuffer();
-        
+
+        //Loop through each line, looking for the closing head element
         while ((inputLine = dis.readLine()) != null) {
             if (inputLine.contains("</head>")) {
                 inputLine = inputLine.substring(0, inputLine.indexOf("</head>") + 7);
@@ -58,22 +77,18 @@ public class OpenGraph {
                 headContents.append(inputLine + "\r\n");
                 break;
             }
-
-            headContents.append(inputLine + "\r\n");
-                
+            headContents.append(inputLine + "\r\n");     
         }
 
         String headContentsStr = headContents.toString();
-
         HtmlCleaner cleaner = new HtmlCleaner();
         //parse the string HTML
         TagNode pageData = cleaner.clean(headContentsStr);
         //open only the meta tags
         TagNode[] metaData = pageData.getElementsByName("meta", true);
         for (TagNode metaElement : metaData) {
-            if (metaElement.hasAttribute("property"))
-                if (metaElement.getAttributeByName("property").startsWith("og:"))
-                    metaAttributes.put(metaElement.getAttributeByName("property").replaceFirst("og:", ""), metaElement.getAttributeByName("content"));    
+            if (metaElement.hasAttribute("property") && metaElement.getAttributeByName("property").startsWith("og:"))
+                metaAttributes.put(metaElement.getAttributeByName("property").replaceFirst("og:", ""), metaElement.getAttributeByName("content"));
         }
 
         /**
@@ -87,7 +102,7 @@ public class OpenGraph {
         }
 
         /**
-         * Has conformed, now get basic sub type.
+         * Has conformed, now determine basic sub type.
          */
         baseType = null;
         for (String base : BASE_TYPES.keySet()) {
@@ -119,8 +134,17 @@ public class OpenGraph {
      * @param property The Open graph property key
      * @return Returns the value of the property if defined, null otherwise
      */
-    public String getMeta(String property) {
+    public String getContent(String property) {
         return metaAttributes.get(property);
+    }
+
+    /**
+     * Get all the defined properties of the Open Graph object
+     * @return An array of all currently defined properties
+     */
+    public String[] getProperties() {
+        Set<String> valueSet = metaAttributes.keySet();
+        return (String[]) valueSet.toArray();
     }
 
     /**
@@ -129,5 +153,74 @@ public class OpenGraph {
      */
     public String getOriginalUrl() {
         return pageUrl;
+    }
+
+    /**
+     * Get the XHTML representation of the Open Graph data.
+     * @return An array of meta elements as Strings
+     */
+    public String[] toXHTML() {
+        //allocate the array
+        String[] returnHTML = new String[metaAttributes.size()];
+
+        int index = 0; //keep track of the index to insert into
+        for (String key : metaAttributes.keySet())
+            returnHTML[index++] = "<meta property=\"ob:" + key + "\" content=\"" + metaAttributes.get(key) + "\" />";
+
+        //return the array
+        return returnHTML;
+    }
+
+    /**
+     * Set the Open Graph property to a specific value
+     * @param property The og:XXXX where XXXX is the property you wish to set
+     * @param content The value or contents of the property to be set
+     */
+    public void setProperty(String property, String content) {
+        //help the user just a little bit if are confused
+        if (property.startsWith("og:"))
+            property = property.replaceFirst("og:", "");
+        if(!hasChanged)
+            hasChanged = true;
+
+        metaAttributes.put(property, content);
+    }
+
+    /**
+     * Removed a defined property
+     * @param property The og:XXXX where XXXX is the property you wish to remove
+     */
+    public void removeProperty(String property) {
+        //help the user just a little bit if are confused
+        if (property.startsWith("og:"))
+            property = property.replaceFirst("og:", "");
+        if(!hasChanged)
+            hasChanged = true;
+
+        metaAttributes.remove(property);
+    }
+
+    /**
+     * Obtain the underlying HashTable
+     * @return The underlying structure as a Hashtable
+     */
+    public Hashtable<String, String> exposeTable() {
+        return metaAttributes;
+    }
+
+    /**
+     * Test if the Open Graph object was initially a representation of a web page
+     * @return True if the object is from a web page, false otherwise
+     */
+    public boolean isFromWeb() {
+        return isImported;
+    }
+
+    /**
+     * Test if the object has been modified by setters/deleters. This is only relevant if this object initally represented a web page
+     * @return True True if the object has been modified, false otherwise
+     */
+    public boolean hasChanged() {
+        return hasChanged;
     }
 }
