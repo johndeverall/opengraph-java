@@ -8,11 +8,14 @@ OpenGraph testPage = new OpenGraph("http://uk.rottentomatoes.com/m/1217700-kick_
 String title = testPage.getMeta("title");
 
 --Features--
-Currently the class only provides a basic HashMap like representation of an Open Graph page, but the following features are planned.
+Hashtable like representation of an Open Graph page
+Output to HTML (render the meta data back out as <meta> tags)
+Create OG data from scratch (the ability to use this class as a reverse and generate OG meta tags)
 
-#Output to HTML (render the meta data back out as <meta> tags)
-#Create OG data from scratch (the ability to use this class as a reverse and generate OG meta tags)
+Planned features
 #Geolocation support (given that the OpenGraph supports lat/long, better support should be provided)
+#JSON output
+#Exploring possibility of using a RDF parser as opposed to a DOM parser
 
 --License--
 HTMLCleaner license (taken from http://htmlcleaner.sourceforge.net/license.php)
