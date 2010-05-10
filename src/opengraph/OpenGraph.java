@@ -89,6 +89,8 @@ public class OpenGraph {
         for (TagNode metaElement : metaData) {
             if (metaElement.hasAttribute("property") && metaElement.getAttributeByName("property").startsWith("og:"))
                 metaAttributes.put(metaElement.getAttributeByName("property").replaceFirst("og:", ""), metaElement.getAttributeByName("content"));
+            else if (metaElement.hasAttribute("name") && metaElement.getAttributeByName("name").startsWith("og:"))
+                metaAttributes.put(metaElement.getAttributeByName("name").replaceFirst("og:", ""), metaElement.getAttributeByName("content"));
         }
 
         /**
@@ -165,7 +167,7 @@ public class OpenGraph {
 
         int index = 0; //keep track of the index to insert into
         for (String key : metaAttributes.keySet())
-            returnHTML[index++] = "<meta property=\"ob:" + key + "\" content=\"" + metaAttributes.get(key) + "\" />";
+            returnHTML[index++] = "<meta property=\"og:" + key + "\" content=\"" + metaAttributes.get(key) + "\" />";
 
         //return the array
         return returnHTML;
