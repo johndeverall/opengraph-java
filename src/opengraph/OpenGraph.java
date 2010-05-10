@@ -158,6 +158,22 @@ public class OpenGraph {
     }
 
     /**
+     * Get the HTML representation of the Open Graph data.
+     * @return An array of meta elements as Strings
+     */
+    public String[] toHTML() {
+        //allocate the array
+        String[] returnHTML = new String[metaAttributes.size()];
+
+        int index = 0; //keep track of the index to insert into
+        for (String key : metaAttributes.keySet())
+            returnHTML[index++] = "<meta property=\"og:" + key + "\" content=\"" + metaAttributes.get(key) + "\" />";
+
+        //return the array
+        return returnHTML;
+    }
+
+        /**
      * Get the XHTML representation of the Open Graph data.
      * @return An array of meta elements as Strings
      */
@@ -167,7 +183,7 @@ public class OpenGraph {
 
         int index = 0; //keep track of the index to insert into
         for (String key : metaAttributes.keySet())
-            returnHTML[index++] = "<meta property=\"og:" + key + "\" content=\"" + metaAttributes.get(key) + "\" />";
+            returnHTML[index++] = "<meta name=\"og:" + key + "\" content=\"" + metaAttributes.get(key) + "\" />";
 
         //return the array
         return returnHTML;
