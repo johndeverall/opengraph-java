@@ -36,7 +36,7 @@ public class OpenGraph {
                 BASE_TYPES.put("person", new String[] {"actor", "athlete", "author", "director", "musician", "politician", "public_figure"});
                 BASE_TYPES.put("place", new String[] {"city", "landmark", "state_province"});
                 BASE_TYPES.put("product", new String[] {"album", "book", "drink", "food", "game", "movie", "product", "song", "tv_show"});
-                BASE_TYPES.put("website", new String[] {"blog", "website"});
+                BASE_TYPES.put("website", new String[] {"blog", "website", "article"});
 	}
 
    /**
