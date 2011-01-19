@@ -33,8 +33,8 @@ public class OpenGraph {
 		BASE_TYPES.put("business", new String[] {"bar", "company", "cafe", "hotel", "restaurant"});
 		BASE_TYPES.put("group", new String[] {"cause", "sports_league", "sports_team"});
                 BASE_TYPES.put("organization", new String[] {"band", "government", "non_profit", "school", "university"});
-                BASE_TYPES.put("person", new String[] {"actor", "athlete", "author", "director", "musician", "politician", "public_figure"});
-                BASE_TYPES.put("place", new String[] {"city", "landmark", "state_province"});
+                BASE_TYPES.put("person", new String[] {"actor", "athlete", "author", "director", "musician", "politician", "profile", "public_figure"});
+                BASE_TYPES.put("place", new String[] {"city", "country", "landmark", "state_province"});
                 BASE_TYPES.put("product", new String[] {"album", "book", "drink", "food", "game", "movie", "product", "song", "tv_show"});
                 BASE_TYPES.put("website", new String[] {"blog", "website", "article"});
 	}
