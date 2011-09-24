@@ -12,15 +12,27 @@ In this example we will fetch the og:title and og:type contents, while ignoring 
 
 > String type = testPage.getContent("type");
 
+Another example (available in the examples/ folder) demonstrates the support for custom OpenGraph namespaces
+
+	OpenGraph movie = new OpenGraph("http://www.rottentomatoes.com/m/back_to_the_future/", true);
+	System.out.println("Movie: " + movie.getContent("title"));
+	for (MetaElement director : movie.getProperties("director"))
+	{
+		OpenGraph extendedInfo = director.getExtendedData();
+		System.out.println("Directed by: " + extendedInfo.getContent("title"));
+	}
+
+	for (MetaElement member : movie.getProperties("cast"))
+	{
+		OpenGraph extendedInfo = member.getExtendedData();
+		System.out.println("Starring: " + extendedInfo.getContent("title"));
+	}
+
 ## Features ##
+* Support's the ability for social applications to declare their own namespaces and OpenGraph meta
 * Hashtable like representation of an Open Graph page
 * Output to HTML (render the meta data back out as <meta> tags)
 * Create OG data from scratch (the ability to use this class as a reverse and generate OG meta tags)
-
-## Planned features ##
-* Geolocation support (given that the OpenGraph supports lat/long, better support should be provided)
-* JSON output
-* Exploring possibility of using a RDF parser as opposed to a DOM parser
 
 ## License ##
 HTMLCleaner license (taken from http://htmlcleaner.sourceforge.net/license.php)

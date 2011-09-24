@@ -1,2 +1,3 @@
 #Ignore
-nbproject/*
+build/
+examples/backtothefuture/build/

@@ -1,10 +1,14 @@
-package opengraph;
+package org.opengraph;
 
 import java.io.IOException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
 import java.util.Hashtable;
+import java.util.ArrayList;
 import java.util.Set;
 
 import org.htmlcleaner.HtmlCleaner;
@@ -18,32 +22,37 @@ import java.net.URLConnection;
  * A simplified layer over a Hastable
  * @author Callum Jones
  */
-public class OpenGraph {
+public class OpenGraph
+{
     private String pageUrl;
-    private Hashtable<String, String> metaAttributes;
+	private ArrayList<OpenGraphNamespace> pageNamespaces;
+    private Hashtable<String, ArrayList<MetaElement>> metaAttributes;
     private String baseType;
-    private boolean isImported; //determine if the object is a new incarnation or representation of a web page
-    private boolean hasChanged; //track if object has been changed
+    private boolean isImported; // determine if the object is a new incarnation or representation of a web page
+    private boolean hasChanged; // track if object has been changed
 
     public final static String[] REQUIRED_META = new String[]{"title", "type", "image", "url" };
     
     public final static Hashtable<String, String[]> BASE_TYPES = new Hashtable<String, String[]>();
-       static {
+       static
+	{
 		BASE_TYPES.put("activity", new String[] {"activity", "sport"});
 		BASE_TYPES.put("business", new String[] {"bar", "company", "cafe", "hotel", "restaurant"});
 		BASE_TYPES.put("group", new String[] {"cause", "sports_league", "sports_team"});
-                BASE_TYPES.put("organization", new String[] {"band", "government", "non_profit", "school", "university"});
-                BASE_TYPES.put("person", new String[] {"actor", "athlete", "author", "director", "musician", "politician", "profile", "public_figure"});
-                BASE_TYPES.put("place", new String[] {"city", "country", "landmark", "state_province"});
-                BASE_TYPES.put("product", new String[] {"album", "book", "drink", "food", "game", "movie", "product", "song", "tv_show"});
-                BASE_TYPES.put("website", new String[] {"blog", "website", "article"});
+        BASE_TYPES.put("organization", new String[] {"band", "government", "non_profit", "school", "university"});
+        BASE_TYPES.put("person", new String[] {"actor", "athlete", "author", "director", "musician", "politician", "profile", "public_figure"});
+        BASE_TYPES.put("place", new String[] {"city", "country", "landmark", "state_province"});
+        BASE_TYPES.put("product", new String[] {"album", "book", "drink", "food", "game", "movie", "product", "song", "tv_show"});
+        BASE_TYPES.put("website", new String[] {"blog", "website", "article"});
 	}
 
    /**
     * Create an open graph representation for generating your own Open Graph object
     */
-    public OpenGraph() {
-        metaAttributes = new Hashtable<String, String>();
+    public OpenGraph()
+	{
+		pageNamespaces = new ArrayList<OpenGraphNamespace>();
+        metaAttributes = new Hashtable<String, ArrayList<MetaElement>>();
         hasChanged = false;
         isImported = false;
     }
@@ -58,20 +67,22 @@ public class OpenGraph {
     public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception {
         this();
         isImported = true;
-        //init the attribute storage
+        // init the attribute storage
         
         pageUrl = url;
         
-        //download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
+        // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
         URL pageURL = new URL(url);
         URLConnection siteConnection = pageURL.openConnection();
         BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream()));
         String inputLine;
         StringBuffer headContents = new StringBuffer();
 
-        //Loop through each line, looking for the closing head element
-        while ((inputLine = dis.readLine()) != null) {
-            if (inputLine.contains("</head>")) {
+        // Loop through each line, looking for the closing head element
+        while ((inputLine = dis.readLine()) != null)
+		{
+            if (inputLine.contains("</head>"))
+			{
                 inputLine = inputLine.substring(0, inputLine.indexOf("</head>") + 7);
                 inputLine = inputLine.concat("<body></body></html>");
                 headContents.append(inputLine + "\r\n");
@@ -82,22 +93,59 @@ public class OpenGraph {
 
         String headContentsStr = headContents.toString();
         HtmlCleaner cleaner = new HtmlCleaner();
-        //parse the string HTML
+        // parse the string HTML
         TagNode pageData = cleaner.clean(headContentsStr);
-        //open only the meta tags
+
+		// read in the declared namespaces
+		boolean hasOGspec = false;
+		TagNode headElement = pageData.findElementByName("head", true);
+		if (headElement.hasAttribute("prefix"))
+		{
+			String namespaceData = headElement.getAttributeByName("prefix");
+			Pattern pattern = Pattern.compile("(([A-Za-z0-9_]+):\\s+(http:\\/\\/ogp.me\\/ns(\\/\\w+)*#))\\s*");
+			Matcher matcher = pattern.matcher(namespaceData);
+			while (matcher.find())
+			{
+                String prefix = matcher.group(2);
+				String documentURI = matcher.group(3);
+				pageNamespaces.add(new OpenGraphNamespace(prefix, documentURI));
+				if (prefix.equals("og"))
+					hasOGspec = true;
+            }
+		}
+		
+		// some pages do not include the new OG spec
+		// this fixes compatability
+		if (!hasOGspec)
+			pageNamespaces.add(new OpenGraphNamespace("og", "http:// ogp.me/ns#"));
+		
+        // open only the meta tags
         TagNode[] metaData = pageData.getElementsByName("meta", true);
-        for (TagNode metaElement : metaData) {
-            if (metaElement.hasAttribute("property") && metaElement.getAttributeByName("property").startsWith("og:"))
-                metaAttributes.put(metaElement.getAttributeByName("property").replaceFirst("og:", ""), metaElement.getAttributeByName("content"));
-            else if (metaElement.hasAttribute("name") && metaElement.getAttributeByName("name").startsWith("og:"))
-                metaAttributes.put(metaElement.getAttributeByName("name").replaceFirst("og:", ""), metaElement.getAttributeByName("content"));
+        for (TagNode metaElement : metaData)
+		{
+			for (OpenGraphNamespace namespace : pageNamespaces)
+			{
+				String target = null;
+	            if (metaElement.hasAttribute("property"))
+	                target = "property";
+	            else if (metaElement.hasAttribute("name"))
+	                target = "name";
+	
+				if (target != null && metaElement.getAttributeByName(target).startsWith(namespace.getPrefix() + ":"))
+				{
+					setProperty(namespace, metaElement.getAttributeByName(target), metaElement.getAttributeByName("content"));
+					break;
+				}
+			}
         }
 
         /**
          * Check that page conforms to Open Graph protocol
          */
-        if (!ignoreSpecErrors) {
-            for (String req : REQUIRED_META) {
+        if (!ignoreSpecErrors)
+		{
+            for (String req : REQUIRED_META)
+			{
                 if (!metaAttributes.containsKey(req))
                     throw new Exception("Does not conform to Open Graph protocol");
             }
@@ -107,11 +155,24 @@ public class OpenGraph {
          * Has conformed, now determine basic sub type.
          */
         baseType = null;
-        for (String base : BASE_TYPES.keySet()) {
+		String currentType = getContent("type");
+		// some apps use their OG namespace as a prefix
+		for (OpenGraphNamespace ns : pageNamespaces)
+		{
+			if (currentType.startsWith(ns.getPrefix() + ":"))
+			{
+				currentType = currentType.replaceFirst(ns.getPrefix() + ":","");
+				break; // done here
+			}
+		}
+        for (String base : BASE_TYPES.keySet())
+		{
             String[] baseList = BASE_TYPES.get(base);
             boolean finished = false;
-            for (String expandedType : baseList) {
-                if (expandedType.equals(metaAttributes.get("type"))) {
+            for (String expandedType : baseList)
+			{
+                if (expandedType.equals(currentType))
+				{
                     baseType = base;
                     finished = true;
                     break;
@@ -125,96 +186,130 @@ public class OpenGraph {
 
     /**
      * Get the basic type of the Open graph page as per the specification
-     * @return Base type is defined by specification, null otherwise
+     * @return Base type as defined by specification, null otherwise
      */
-    public String getBaseType() {
+    public String getBaseType()
+	{
         return baseType;
     }
 
     /**
      * Get a value of a given Open Graph property
      * @param property The Open graph property key
-     * @return Returns the value of the property if defined, null otherwise
+     * @return Returns the value of the first property defined, null otherwise
      */
-    public String getContent(String property) {
-        return metaAttributes.get(property);
+    public String getContent(String property)
+	{
+        if (metaAttributes.containsKey(property) && metaAttributes.get(property).size() > 0)
+			return metaAttributes.get(property).get(0).getContent();
+		else
+			return null;
     }
 
     /**
      * Get all the defined properties of the Open Graph object
      * @return An array of all currently defined properties
      */
-    public String[] getProperties() {
-        Set<String> valueSet = metaAttributes.keySet();
-        return (String[]) valueSet.toArray();
+    public MetaElement[] getProperties()
+	{
+		ArrayList<MetaElement> allElements = new ArrayList<MetaElement>();
+        for (ArrayList<MetaElement> collection : metaAttributes.values())
+			allElements.addAll(collection);
+		
+		return (MetaElement[]) allElements.toArray(new MetaElement[allElements.size()]);
+    }
+
+    /**
+     * Get all the defined properties of the Open Graph object
+	 * @param property The property to focus on
+     * @return An array of all currently defined properties
+     */
+    public MetaElement[] getProperties(String property)
+	{
+		if (metaAttributes.containsKey(property))
+		{
+			ArrayList target = metaAttributes.get(property);
+			return (MetaElement[]) target.toArray(new MetaElement[target.size()]);
+		}
+		else
+			return null;
     }
 
     /**
      * Get the original URL the Open Graph page was obtained from
      * @return The address to the Open Graph object page
      */
-    public String getOriginalUrl() {
+    public String getOriginalUrl()
+	{
         return pageUrl;
     }
-
+	
+	
     /**
      * Get the HTML representation of the Open Graph data.
      * @return An array of meta elements as Strings
      */
-    public String[] toHTML() {
-        //allocate the array
-        String[] returnHTML = new String[metaAttributes.size()];
+    public String[] toHTML()
+	{
+        // allocate the array
+        ArrayList<String> returnHTML = new ArrayList<String>();
 
-        int index = 0; //keep track of the index to insert into
-        for (String key : metaAttributes.keySet())
-            returnHTML[index++] = "<meta property=\"og:" + key + "\" content=\"" + metaAttributes.get(key) + "\" />";
+        int index = 0; // keep track of the index to insert into
+        for (ArrayList<MetaElement> elements : metaAttributes.values())
+		{
+			for (MetaElement element : elements)
+            	returnHTML.add("<meta property=\"" + element.getNamespace() + ":" + element.getProperty() + "\" content=\"" + element.getContent() + "\" />");
+		}
 
-        //return the array
-        return returnHTML;
+        // return the array
+        return (String[]) returnHTML.toArray();
     }
 
         /**
      * Get the XHTML representation of the Open Graph data.
      * @return An array of meta elements as Strings
      */
-    public String[] toXHTML() {
-        //allocate the array
-        String[] returnHTML = new String[metaAttributes.size()];
+    public String[] toXHTML()
+	{
+        // allocate the array
+        ArrayList<String> returnHTML = new ArrayList<String>();
 
-        int index = 0; //keep track of the index to insert into
-        for (String key : metaAttributes.keySet())
-            returnHTML[index++] = "<meta name=\"og:" + key + "\" content=\"" + metaAttributes.get(key) + "\" />";
+        int index = 0; // keep track of the index to insert into
+        for (ArrayList<MetaElement> elements : metaAttributes.values())
+		{
+			for (MetaElement element : elements)
+            	returnHTML.add("<meta name=\"" + element.getNamespace().getPrefix() + ":" + element.getProperty() + "\" content=\"" + element.getContent() + "\" />");
+		}
 
-        //return the array
-        return returnHTML;
+        // return the array
+        return (String[]) returnHTML.toArray();
     }
 
     /**
      * Set the Open Graph property to a specific value
+	 * @param namespace The OpenGraph namespace the content belongs to
      * @param property The og:XXXX where XXXX is the property you wish to set
      * @param content The value or contents of the property to be set
      */
-    public void setProperty(String property, String content) {
-        //help the user just a little bit if are confused
-        if (property.startsWith("og:"))
-            property = property.replaceFirst("og:", "");
-        if(!hasChanged)
-            hasChanged = true;
-
-        metaAttributes.put(property, content);
+    public void setProperty(OpenGraphNamespace namespace, String property, String content)
+	{
+        if (!pageNamespaces.contains(namespace))
+			pageNamespaces.add(namespace);
+			
+		property = property.replaceAll(namespace.getPrefix() + ":", "");
+		MetaElement element = new MetaElement(namespace, property, content);
+		if (!metaAttributes.containsKey(property))
+			metaAttributes.put(property, new ArrayList<MetaElement>());
+				
+		metaAttributes.get(property).add(element);
     }
 
     /**
      * Removed a defined property
      * @param property The og:XXXX where XXXX is the property you wish to remove
      */
-    public void removeProperty(String property) {
-        //help the user just a little bit if are confused
-        if (property.startsWith("og:"))
-            property = property.replaceFirst("og:", "");
-        if(!hasChanged)
-            hasChanged = true;
-
+    public void removeProperty(String property)
+	{
         metaAttributes.remove(property);
     }
 
@@ -222,7 +317,7 @@ public class OpenGraph {
      * Obtain the underlying HashTable
      * @return The underlying structure as a Hashtable
      */
-    public Hashtable<String, String> exposeTable() {
+    public Hashtable<String, ArrayList<MetaElement>> exposeTable() {
         return metaAttributes;
     }
 
@@ -230,7 +325,8 @@ public class OpenGraph {
      * Test if the Open Graph object was initially a representation of a web page
      * @return True if the object is from a web page, false otherwise
      */
-    public boolean isFromWeb() {
+    public boolean isFromWeb()
+	{
         return isImported;
     }
 
@@ -238,7 +334,8 @@ public class OpenGraph {
      * Test if the object has been modified by setters/deleters. This is only relevant if this object initally represented a web page
      * @return True True if the object has been modified, false otherwise
      */
-    public boolean hasChanged() {
+    public boolean hasChanged()
+	{
         return hasChanged;
     }
 }

@@ -1,6 +1,6 @@
-<project name="OpenGraphJava" basedir="." default="main">
+<project name="BackToTheFuture" basedir="." default="main">
 	
-	<property name="lib.dir"     value="libs"/>
+	<property name="lib.dir"     value="../../build/jar"/>
 	
 	<path id="classpath">
         <fileset dir="${lib.dir}" includes="**/*.jar"/>
@@ -44,6 +44,7 @@
 			<manifest>
 			    <attribute name="Built-By" value="${user.name}"/>
 				<attribute name="Class-Path" value="${lib.list}"/>
+				<attribute name="Main-Class" value="org.opengraph.examples.BackToTheFuture"/>
 			 </manifest>
         </jar>
     </target>
