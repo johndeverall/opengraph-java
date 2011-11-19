@@ -1,25 +1,22 @@
 package org.opengraph;
 
-import java.io.IOException;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
-
-import java.util.Hashtable;
-import java.util.ArrayList;
-import java.util.Set;
-
 import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.TagNode;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * A Java object representation of an Open Graph enabled webpage
- * A simplified layer over a Hastable
+ * A Java object representation of an Open Graph enabled webpage.
+ * A simplified layer over a Hastable.
+ *
  * @author Callum Jones
  */
 public class OpenGraph
@@ -32,7 +29,7 @@ public class OpenGraph
     private boolean hasChanged; // track if object has been changed
 
     public final static String[] REQUIRED_META = new String[]{"title", "type", "image", "url" };
-    
+
     public final static Hashtable<String, String[]> BASE_TYPES = new Hashtable<String, String[]>();
        static
 	{
@@ -68,13 +65,14 @@ public class OpenGraph
         this();
         isImported = true;
         // init the attribute storage
-        
+
         pageUrl = url;
-        
+
         // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
         URL pageURL = new URL(url);
         URLConnection siteConnection = pageURL.openConnection();
-        BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream()));
+        Charset charset = getConnectionCharset(siteConnection);
+        BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream(), charset));
         String inputLine;
         StringBuffer headContents = new StringBuffer();
 
@@ -88,7 +86,7 @@ public class OpenGraph
                 headContents.append(inputLine + "\r\n");
                 break;
             }
-            headContents.append(inputLine + "\r\n");     
+            headContents.append(inputLine + "\r\n");
         }
 
         String headContentsStr = headContents.toString();
@@ -113,12 +111,12 @@ public class OpenGraph
 					hasOGspec = true;
             }
 		}
-		
+
 		// some pages do not include the new OG spec
-		// this fixes compatability
+		// this fixes compatibility
 		if (!hasOGspec)
 			pageNamespaces.add(new OpenGraphNamespace("og", "http:// ogp.me/ns#"));
-		
+
         // open only the meta tags
         TagNode[] metaData = pageData.getElementsByName("meta", true);
         for (TagNode metaElement : metaData)
@@ -130,7 +128,7 @@ public class OpenGraph
 	                target = "property";
 	            else if (metaElement.hasAttribute("name"))
 	                target = "name";
-	
+
 				if (target != null && metaElement.getAttributeByName(target).startsWith(namespace.getPrefix() + ":"))
 				{
 					setProperty(namespace, metaElement.getAttributeByName(target), metaElement.getAttributeByName("content"));
@@ -181,7 +179,69 @@ public class OpenGraph
             if (finished) break;
         }
 
+    }
 
+    /**
+     * Gets the charset for specified connection.
+     * Content Type header is parsed to get the charset name.
+     *
+     * @param connection the connection.
+     * @return the Charset object for response charset name;
+     *         if it's not found then the default charset.
+     */
+    private static Charset getConnectionCharset(URLConnection connection)
+    {
+        String contentType = connection.getContentType();
+        if (contentType != null && contentType.length() > 0)
+        {
+            contentType = contentType.toLowerCase();
+            String charsetName = extractCharsetName(contentType);
+            if (charsetName != null && charsetName.length() > 0)
+            {
+                try
+                {
+                    return Charset.forName(charsetName);
+                }
+                catch (Exception e) {
+                    // specified charset is not found,
+                    // skip it to return the default one
+                }
+            }
+        }
+
+        // return the default charset
+        return Charset.defaultCharset();
+    }
+
+    /**
+     * Extract the charset name form the content type string.
+     * Content type string is received from Content-Type header.
+     *
+     * @param contentType the content type string, must be not null.
+     * @return the found charset name or null if not found.
+     */
+    private static String extractCharsetName(String contentType)
+    {
+        // split onto media types
+        final String[] mediaTypes = contentType.split(":");
+        if (mediaTypes.length > 0)
+        {
+            // use only the first one, and split it on parameters
+            final String[] params = mediaTypes[0].split(";");
+
+            // find the charset parameter and return it's value
+            for (String each : params)
+            {
+                each = each.trim();
+                if (each.startsWith("charset="))
+                {
+                    // return the charset name
+                    return each.substring(8).trim();
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -215,7 +275,7 @@ public class OpenGraph
 		ArrayList<MetaElement> allElements = new ArrayList<MetaElement>();
         for (ArrayList<MetaElement> collection : metaAttributes.values())
 			allElements.addAll(collection);
-		
+
 		return (MetaElement[]) allElements.toArray(new MetaElement[allElements.size()]);
     }
 
@@ -243,8 +303,8 @@ public class OpenGraph
 	{
         return pageUrl;
     }
-	
-	
+
+
     /**
      * Get the HTML representation of the Open Graph data.
      * @return An array of meta elements as Strings
@@ -258,7 +318,8 @@ public class OpenGraph
         for (ArrayList<MetaElement> elements : metaAttributes.values())
 		{
 			for (MetaElement element : elements)
-            	returnHTML.add("<meta property=\"" + element.getNamespace() + ":" + element.getProperty() + "\" content=\"" + element.getContent() + "\" />");
+            	returnHTML.add("<meta property=\"" + element.getNamespace() + ":" +
+                        element.getProperty() + "\" content=\"" + element.getContent() + "\" />");
 		}
 
         // return the array
@@ -278,7 +339,8 @@ public class OpenGraph
         for (ArrayList<MetaElement> elements : metaAttributes.values())
 		{
 			for (MetaElement element : elements)
-            	returnHTML.add("<meta name=\"" + element.getNamespace().getPrefix() + ":" + element.getProperty() + "\" content=\"" + element.getContent() + "\" />");
+            	returnHTML.add("<meta name=\"" + element.getNamespace().getPrefix() + ":" +
+                        element.getProperty() + "\" content=\"" + element.getContent() + "\" />");
 		}
 
         // return the array
@@ -295,12 +357,12 @@ public class OpenGraph
 	{
         if (!pageNamespaces.contains(namespace))
 			pageNamespaces.add(namespace);
-			
+
 		property = property.replaceAll(namespace.getPrefix() + ":", "");
 		MetaElement element = new MetaElement(namespace, property, content);
 		if (!metaAttributes.containsKey(property))
 			metaAttributes.put(property, new ArrayList<MetaElement>());
-				
+
 		metaAttributes.get(property).add(element);
     }
 
@@ -331,7 +393,8 @@ public class OpenGraph
     }
 
     /**
-     * Test if the object has been modified by setters/deleters. This is only relevant if this object initally represented a web page
+     * Test if the object has been modified by setters/deleters.
+     * This is only relevant if this object initially represented a web page
      * @return True True if the object has been modified, false otherwise
      */
     public boolean hasChanged()
