@@ -1,4 +1,4 @@
-OpenGraph for Java is a small class used to represent the Open Graph protocol (available from http://opengraphprotocol.org/
+OpenGraph for Java is a small class used to represent the Open Graph protocol (available from http://opengraphprotocol.org/)
 
 This project is entirely open source due to the size of the code, so please go nuts and do whatever you want with the code.
 
