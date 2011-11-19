@@ -64,9 +64,7 @@ public class OpenGraph
     public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception {
         this();
         isImported = true;
-        // init the attribute storage
 
-        pageUrl = url;
 
         // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
         URL pageURL = new URL(url);
@@ -179,6 +177,9 @@ public class OpenGraph
             if (finished) break;
         }
 
+        // read the original page url
+        URL realURL = siteConnection.getURL();
+        pageUrl = realURL.toExternalForm();
     }
 
     /**
