@@ -29,6 +29,7 @@ Another example (available in the examples/ folder) demonstrates the support for
 	}
 
 ## Features ##
+* Is capable of handling the charset provided by the page when reading in the contents (thanks to [rkhmelyuk](https://github.com/rkhmelyuk))
 * Support's the ability for social applications to declare their own namespaces and OpenGraph meta
 * Hashtable like representation of an Open Graph page
 * Output to HTML (render the meta data back out as <meta> tags)
