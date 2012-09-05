@@ -63,6 +63,11 @@ public class OpenGraph
      */
     public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception {
         this();
+        inspectURL(url, ignoreSpecErrors);
+    }
+
+
+    public void inspectURL(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception {
         isImported = true;
 
 
@@ -119,18 +124,33 @@ public class OpenGraph
         TagNode[] metaData = pageData.getElementsByName("meta", true);
         for (TagNode metaElement : metaData)
 		{
+        	boolean foundMatchWithNamespace = false;
+			String target = null;
+            if (metaElement.hasAttribute("property"))
+                target = "property";
+            else if (metaElement.hasAttribute("name"))
+                target = "name";
+
+			String content = metaElement.getAttributeByName("content");
+			// if content is null, try checking value attribute instead
+			if (content == null ) {
+				content = metaElement.getAttributeByName("value");
+			}
+
 			for (OpenGraphNamespace namespace : pageNamespaces)
 			{
-				String target = null;
-	            if (metaElement.hasAttribute("property"))
-	                target = "property";
-	            else if (metaElement.hasAttribute("name"))
-	                target = "name";
-
 				if (target != null && metaElement.getAttributeByName(target).startsWith(namespace.getPrefix() + ":"))
 				{
-					setProperty(namespace, metaElement.getAttributeByName(target), metaElement.getAttributeByName("content"));
+					foundMatchWithNamespace = true;
+					setProperty(namespace, metaElement.getAttributeByName(target), content);
 					break;
+				}
+			}
+			if (!foundMatchWithNamespace) {
+				if (target != null) {
+					// just set it without a namespace...we'll use whatever information we can get, even if it doesn't
+					// conform to OpenGraph specs (at the time of this change, amazon.com requires it)
+					setProperty(new OpenGraphNamespace("none", "none"), metaElement.getAttributeByName(target), content);
 				}
 			}
         }
@@ -152,13 +172,15 @@ public class OpenGraph
          */
         baseType = null;
 		String currentType = getContent("type");
-		// some apps use their OG namespace as a prefix
-		for (OpenGraphNamespace ns : pageNamespaces)
-		{
-			if (currentType.startsWith(ns.getPrefix() + ":"))
+		if (currentType != null) {
+			// some apps use their OG namespace as a prefix
+			for (OpenGraphNamespace ns : pageNamespaces)
 			{
-				currentType = currentType.replaceFirst(ns.getPrefix() + ":","");
-				break; // done here
+				if (currentType.startsWith(ns.getPrefix() + ":"))
+				{
+					currentType = currentType.replaceFirst(ns.getPrefix() + ":","");
+					break; // done here
+				}
 			}
 		}
         for (String base : BASE_TYPES.keySet())
@@ -376,6 +398,15 @@ public class OpenGraph
         metaAttributes.remove(property);
     }
 
+    /**
+     * Add a namespace to check for during inspection
+     * @param prefix The namespace prefix of the content to search for
+     * @param namespace The namespace of the content to search for
+     */
+    public void addNamespace(String prefix, String namespace) {
+		pageNamespaces.add(new OpenGraphNamespace(prefix, namespace));
+    }
+    
     /**
      * Obtain the underlying HashTable
      * @return The underlying structure as a Hashtable
