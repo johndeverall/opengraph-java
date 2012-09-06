@@ -33,9 +33,9 @@ public class OpenGraph
     public final static Hashtable<String, String[]> BASE_TYPES = new Hashtable<String, String[]>();
        static
 	{
-		BASE_TYPES.put("activity", new String[] {"activity", "sport"});
-		BASE_TYPES.put("business", new String[] {"bar", "company", "cafe", "hotel", "restaurant"});
-		BASE_TYPES.put("group", new String[] {"cause", "sports_league", "sports_team"});
+        BASE_TYPES.put("activity", new String[] {"activity", "sport"});
+        BASE_TYPES.put("business", new String[] {"bar", "company", "cafe", "hotel", "restaurant"});
+        BASE_TYPES.put("group", new String[] {"cause", "sports_league", "sports_team"});
         BASE_TYPES.put("organization", new String[] {"band", "government", "non_profit", "school", "university"});
         BASE_TYPES.put("person", new String[] {"actor", "athlete", "author", "director", "musician", "politician", "profile", "public_figure"});
         BASE_TYPES.put("place", new String[] {"city", "country", "landmark", "state_province"});
@@ -48,7 +48,7 @@ public class OpenGraph
     */
     public OpenGraph()
 	{
-		pageNamespaces = new ArrayList<OpenGraphNamespace>();
+        pageNamespaces = new ArrayList<OpenGraphNamespace>();
         metaAttributes = new Hashtable<String, ArrayList<MetaElement>>();
         hasChanged = false;
         isImported = false;
@@ -272,7 +272,7 @@ public class OpenGraph
      * @return Base type as defined by specification, null otherwise
      */
     public String getBaseType()
-	{
+    {
         return baseType;
     }
 
@@ -282,7 +282,7 @@ public class OpenGraph
      * @return Returns the value of the first property defined, null otherwise
      */
     public String getContent(String property)
-	{
+    {
         if (metaAttributes.containsKey(property) && metaAttributes.get(property).size() > 0)
 			return metaAttributes.get(property).get(0).getContent();
 		else
@@ -294,7 +294,7 @@ public class OpenGraph
      * @return An array of all currently defined properties
      */
     public MetaElement[] getProperties()
-	{
+    {
 		ArrayList<MetaElement> allElements = new ArrayList<MetaElement>();
         for (ArrayList<MetaElement> collection : metaAttributes.values())
 			allElements.addAll(collection);
@@ -308,7 +308,7 @@ public class OpenGraph
      * @return An array of all currently defined properties
      */
     public MetaElement[] getProperties(String property)
-	{
+    {
 		if (metaAttributes.containsKey(property))
 		{
 			ArrayList target = metaAttributes.get(property);
@@ -323,7 +323,7 @@ public class OpenGraph
      * @return The address to the Open Graph object page
      */
     public String getOriginalUrl()
-	{
+    {
         return pageUrl;
     }
 
@@ -333,7 +333,7 @@ public class OpenGraph
      * @return An array of meta elements as Strings
      */
     public String[] toHTML()
-	{
+    {
         // allocate the array
         ArrayList<String> returnHTML = new ArrayList<String>();
 
@@ -354,7 +354,7 @@ public class OpenGraph
      * @return An array of meta elements as Strings
      */
     public String[] toXHTML()
-	{
+    {
         // allocate the array
         ArrayList<String> returnHTML = new ArrayList<String>();
 
@@ -377,7 +377,7 @@ public class OpenGraph
      * @param content The value or contents of the property to be set
      */
     public void setProperty(OpenGraphNamespace namespace, String property, String content)
-	{
+    {
         if (!pageNamespaces.contains(namespace))
 			pageNamespaces.add(namespace);
 
@@ -394,7 +394,7 @@ public class OpenGraph
      * @param property The og:XXXX where XXXX is the property you wish to remove
      */
     public void removeProperty(String property)
-	{
+    {
         metaAttributes.remove(property);
     }
 
@@ -403,7 +403,8 @@ public class OpenGraph
      * @param prefix The namespace prefix of the content to search for
      * @param namespace The namespace of the content to search for
      */
-    public void addNamespace(String prefix, String namespace) {
+    public void addNamespace(String prefix, String namespace) 
+    {
 		pageNamespaces.add(new OpenGraphNamespace(prefix, namespace));
     }
 
@@ -411,7 +412,8 @@ public class OpenGraph
      * Obtain the underlying HashTable
      * @return The underlying structure as a Hashtable
      */
-    public Hashtable<String, ArrayList<MetaElement>> exposeTable() {
+    public Hashtable<String, ArrayList<MetaElement>> exposeTable() 
+    {
         return metaAttributes;
     }
 
@@ -420,7 +422,7 @@ public class OpenGraph
      * @return True if the object is from a web page, false otherwise
      */
     public boolean isFromWeb()
-	{
+    {
         return isImported;
     }
 
@@ -430,7 +432,7 @@ public class OpenGraph
      * @return True True if the object has been modified, false otherwise
      */
     public boolean hasChanged()
-	{
+    {
         return hasChanged;
     }
 }
