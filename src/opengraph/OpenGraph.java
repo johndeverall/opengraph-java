@@ -61,13 +61,15 @@ public class OpenGraph
      * @throws java.io.IOException If a network error occurs, the HTML parser will throw an IO Exception
      * @throws java.lang.Exception A generic exception is throw if the specific page fails to conform to the basic Open Graph standard as define by the constant REQUIRED_META
      */
-    public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception {
+    public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception 
+    {
         this();
         inspectURL(url, ignoreSpecErrors);
     }
 
 
-    public void inspectURL(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception {
+    public void inspectURL(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception 
+    {
         isImported = true;
 
 
@@ -405,7 +407,7 @@ public class OpenGraph
      */
     public void addNamespace(String prefix, String namespace) 
     {
-		pageNamespaces.add(new OpenGraphNamespace(prefix, namespace));
+        pageNamespaces.add(new OpenGraphNamespace(prefix, namespace));
     }
 
     /**
