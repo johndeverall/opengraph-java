@@ -406,7 +406,7 @@ public class OpenGraph
     public void addNamespace(String prefix, String namespace) {
 		pageNamespaces.add(new OpenGraphNamespace(prefix, namespace));
     }
-    
+
     /**
      * Obtain the underlying HashTable
      * @return The underlying structure as a Hashtable
