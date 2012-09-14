@@ -76,6 +76,7 @@ public class OpenGraph
         // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
         URL pageURL = new URL(url);
         URLConnection siteConnection = pageURL.openConnection();
+        String contentType = siteConnection.getContentType();
         Charset charset = getConnectionCharset(siteConnection);
         BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream(), charset));
         String inputLine;
@@ -121,6 +122,13 @@ public class OpenGraph
 		// this fixes compatibility
 		if (!hasOGspec)
 			pageNamespaces.add(new OpenGraphNamespace("og", "http:// ogp.me/ns#"));
+
+        // check for an image URL and prepopoulate some content information
+        if ((contentType != null) && contentType.startsWith("image/")) {
+            OpenGraphNamespace ns = new OpenGraphNamespace("none", "none"); // don't worry about the namespace
+            setProperty(ns, "type", contentType);
+            setProperty(ns, "image", url);
+        }
 
         // open only the meta tags
         TagNode[] metaData = pageData.getElementsByName("meta", true);
@@ -385,10 +393,12 @@ public class OpenGraph
 
 		property = property.replaceAll(namespace.getPrefix() + ":", "");
 		MetaElement element = new MetaElement(namespace, property, content);
+		
 		if (!metaAttributes.containsKey(property))
 			metaAttributes.put(property, new ArrayList<MetaElement>());
 
 		metaAttributes.get(property).add(element);
+
     }
 
     /**
