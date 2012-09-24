@@ -76,6 +76,7 @@ public class OpenGraph
         // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
         URL pageURL = new URL(url);
         URLConnection siteConnection = pageURL.openConnection();
+        siteConnection.addRequestProperty("User-Agent", " Mozilla/5.0 (Windows NT 6.1; WOW64)");
         String contentType = siteConnection.getContentType();
         Charset charset = getConnectionCharset(siteConnection);
         BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream(), charset));
@@ -140,6 +141,8 @@ public class OpenGraph
                 target = "property";
             else if (metaElement.hasAttribute("name"))
                 target = "name";
+            else if (metaElement.hasAttribute("itemprop"))
+                target = "itemprop";
 
 			String content = metaElement.getAttributeByName("content");
 			// if content is null, try checking value attribute instead
