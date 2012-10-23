@@ -4,11 +4,16 @@ import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.TagNode;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -72,7 +77,18 @@ public class OpenGraph
     {
         isImported = true;
 
-
+        // first run the URL through google's safe browsing API
+        int safeBrowsingCode = isURLSafe(url); 
+        if (safeBrowsingCode > 0) {
+            if (safeBrowsingCode == 1) {
+                throw new Exception("phishing");
+            } else if (safeBrowsingCode == 2) {
+                throw new Exception("malware");
+            } else if (safeBrowsingCode == 3) {
+                throw new Exception("phishing,malware");
+            }
+        }
+        
         // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
         URL pageURL = new URL(url);
         URLConnection siteConnection = pageURL.openConnection();
@@ -167,6 +183,62 @@ public class OpenGraph
 				}
 			}
         }
+
+        // look for non-opengraph info to get more information
+        // (title, type, image, description)
+        if (this.getContent("title") == null) {
+            TagNode[] titleData = pageData.getElementsByName("title", true);
+            for (TagNode metaElement : titleData) {
+                StringBuffer content = metaElement.getText();
+                setProperty(new OpenGraphNamespace("none", "none"), "title", content.toString());
+            }
+        }
+        if (this.getContent("image") == null) {
+            try {
+                BufferedReader bodydis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream(), charset));
+                StringBuffer bodyContents = new StringBuffer("<html><body>");
+    
+                // Loop through each line, looking for img tags
+                int startIndex;
+                int endIndex;
+                int imageCount = 0;
+                while ((inputLine = bodydis.readLine()) != null) {
+                    startIndex = inputLine.indexOf("<img");
+                    if (startIndex >=0 ) {
+                        endIndex = inputLine.indexOf(">", startIndex);
+                        if (endIndex >= 0) {
+                            inputLine = inputLine.substring(startIndex, endIndex + 1);
+                            bodyContents.append(inputLine + "\r\n");
+                            imageCount++;
+                            // just get the first 15
+                            if (imageCount >= 15) {
+                                break;
+                            }
+                        }
+                    }
+                    headContents.append(inputLine + "\r\n");
+                }
+                bodyContents.append("</body></html>");
+    
+                // parse the string HTML
+                TagNode bodyData = cleaner.clean(bodyContents.toString());
+                TagNode[] imageData = bodyData.getElementsByName("img", true);
+                HashMap<String,String> imagesHash = new HashMap<String,String>();
+                for (TagNode metaElement : imageData) {
+                    String content = metaElement.getAttributeByName("src");
+                    if ((content != null) && (content.length() > 0)) {
+                        if (!imagesHash.containsKey(content)) {
+                            setProperty(new OpenGraphNamespace("none", "none"), "image", content);
+                            imagesHash.put(content, "true");
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // if we fail here, no big deal...just keep going
+                e.printStackTrace();
+            }
+        }
+        
 
         /**
          * Check that page conforms to Open Graph protocol
@@ -449,5 +521,57 @@ public class OpenGraph
     public boolean hasChanged()
     {
         return hasChanged;
+    }
+    
+    /**
+     * 
+     * @param requestURL    the URL to check for safety
+     * @return              0 if safe, 1 if on the phishing list, 2 if on the malware list, 3 if on both
+     * @throws Exception
+     */
+    private int isURLSafe(String requestURL) throws Exception {
+
+        int returnCode = 0;
+        String request = "https://sb-ssl.google.com/safebrowsing/api/lookup?client=api&apikey=ABQIAAAA8HLIrXcnY3txHnAjvgTKhhQwRV2HlHZpcnoi9WCslwMynZl_5g&appver=1.0&pver=3.0&url=";
+        try {
+            request += URLEncoder.encode(requestURL, "UTF-8");
+        } catch (UnsupportedEncodingException uee) {
+            throw uee;
+        }
+        URL url;
+        HttpURLConnection conn;
+        BufferedReader rd = null;
+        String line;
+        boolean isPhishing = false;
+        boolean isMalware = false;
+        try {
+           url = new URL(request);
+           conn = (HttpURLConnection) url.openConnection();
+           conn.setRequestMethod("GET");
+           rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+           if (conn.getResponseCode() == 200) {
+               while ((line = rd.readLine()) != null) {
+                   if (line.contains("phishing")) {
+                       isPhishing = true;
+                   }
+                   if (line.contains("malware")) {
+                       isMalware = true;
+                   }
+               }
+           }
+        } finally {
+            if (rd != null) {
+                rd.close();
+            }
+        }
+
+        if (isPhishing) {
+            returnCode = 1;
+        }
+        if (isMalware) {
+            returnCode += 2;
+        }
+        
+        return returnCode;
     }
 }
