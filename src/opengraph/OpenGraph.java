@@ -91,8 +91,19 @@ public class OpenGraph
         
         // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
         URL pageURL = new URL(url);
-        URLConnection siteConnection = pageURL.openConnection();
-        siteConnection.addRequestProperty("User-Agent", " Mozilla/5.0 (Windows NT 6.1; WOW64)");
+        HttpURLConnection siteConnection = (HttpURLConnection)pageURL.openConnection();
+        int responseCode = siteConnection.getResponseCode();
+        if (responseCode != 200) {
+            // if we didn't get success, the site may be blocking our attempt to open
+            // a connection not as a browser.  Try again with faking the user-agent
+            siteConnection = (HttpURLConnection)pageURL.openConnection();
+            siteConnection.addRequestProperty("User-Agent", " Mozilla/5.0 (Windows NT 6.1; WOW64)");
+            responseCode = siteConnection.getResponseCode();
+            if (responseCode != 200) {
+                // give up
+                throw new Exception("Failed to connect to url");
+            }
+        }
         String contentType = siteConnection.getContentType();
         Charset charset = getConnectionCharset(siteConnection);
         BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream(), charset));
@@ -140,7 +151,7 @@ public class OpenGraph
 		if (!hasOGspec)
 			pageNamespaces.add(new OpenGraphNamespace("og", "http:// ogp.me/ns#"));
 
-        // check for an image URL and prepopoulate some content information
+        // check for an image URL and pre-populate some content information
         if ((contentType != null) && contentType.startsWith("image/")) {
             OpenGraphNamespace ns = new OpenGraphNamespace("none", "none"); // don't worry about the namespace
             setProperty(ns, "type", contentType);
