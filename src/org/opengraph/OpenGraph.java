@@ -7,6 +7,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.net.CookieHandler;
+import java.net.CookieManager;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
@@ -91,6 +93,8 @@ public class OpenGraph
         
         // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
         URL pageURL = new URL(url);
+        //HttpURLConnection.setFollowRedirects(true);
+        CookieHandler.setDefault(new CookieManager());
         HttpURLConnection siteConnection = (HttpURLConnection)pageURL.openConnection();
         int responseCode = siteConnection.getResponseCode();
         if (responseCode != 200) {
