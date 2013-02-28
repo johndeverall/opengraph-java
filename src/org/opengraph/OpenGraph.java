@@ -96,6 +96,10 @@ public class OpenGraph
         //HttpURLConnection.setFollowRedirects(true);
         CookieHandler.setDefault(new CookieManager());
         HttpURLConnection siteConnection = (HttpURLConnection)pageURL.openConnection();
+        if (url.indexOf("manta.com") > -1) {
+            siteConnection.addRequestProperty("User-Agent", "Manta OG Scraper");
+            System.out.println("set the user agent to Manta OG Scraper");
+        }
         int responseCode = siteConnection.getResponseCode();
         if (responseCode != 200) {
             // if we didn't get success, the site may be blocking our attempt to open
