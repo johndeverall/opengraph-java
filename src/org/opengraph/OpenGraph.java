@@ -71,6 +71,8 @@ public class OpenGraph
     public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception 
     {
         this();
+        System.setProperty("http.agent", "");
+        System.setProperty("User-Agent", "");
         inspectURL(url, ignoreSpecErrors);
     }
 
@@ -97,7 +99,7 @@ public class OpenGraph
         CookieHandler.setDefault(new CookieManager());
         HttpURLConnection siteConnection = (HttpURLConnection)pageURL.openConnection();
         if (url.indexOf("manta.com") > -1) {
-            siteConnection.addRequestProperty("User-Agent", "Manta OG Scraper");
+            siteConnection.setRequestProperty("User-Agent", "Manta OG Scraper");
             System.out.println("set the user agent to Manta OG Scraper");
         }
         int responseCode = siteConnection.getResponseCode();
@@ -105,7 +107,7 @@ public class OpenGraph
             // if we didn't get success, the site may be blocking our attempt to open
             // a connection not as a browser.  Try again with faking the user-agent
             siteConnection = (HttpURLConnection)pageURL.openConnection();
-            siteConnection.addRequestProperty("User-Agent", " Mozilla/5.0 (Windows NT 6.1; WOW64)");
+            siteConnection.setRequestProperty("User-Agent", " Mozilla/5.0 (Windows NT 6.1; WOW64)");
             responseCode = siteConnection.getResponseCode();
             if (responseCode != 200) {
                 // give up
@@ -593,4 +595,18 @@ public class OpenGraph
         
         return returnCode;
     }
+
+//    public static void main(String [] args)
+//	{
+//		try
+//		{
+//			String uri = args[0];
+//			OpenGraph page = new OpenGraph();
+//		    page.inspectURL(uri, true);
+//		}
+//		catch (Exception e)
+//		{
+//			e.printStackTrace();
+//		}
+//	}
 }
