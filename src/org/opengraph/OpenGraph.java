@@ -4,11 +4,18 @@ import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.TagNode;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,9 +40,9 @@ public class OpenGraph
     public final static Hashtable<String, String[]> BASE_TYPES = new Hashtable<String, String[]>();
        static
 	{
-		BASE_TYPES.put("activity", new String[] {"activity", "sport"});
-		BASE_TYPES.put("business", new String[] {"bar", "company", "cafe", "hotel", "restaurant"});
-		BASE_TYPES.put("group", new String[] {"cause", "sports_league", "sports_team"});
+        BASE_TYPES.put("activity", new String[] {"activity", "sport"});
+        BASE_TYPES.put("business", new String[] {"bar", "company", "cafe", "hotel", "restaurant"});
+        BASE_TYPES.put("group", new String[] {"cause", "sports_league", "sports_team"});
         BASE_TYPES.put("organization", new String[] {"band", "government", "non_profit", "school", "university"});
         BASE_TYPES.put("person", new String[] {"actor", "athlete", "author", "director", "musician", "politician", "profile", "public_figure"});
         BASE_TYPES.put("place", new String[] {"city", "country", "landmark", "state_province"});
@@ -48,7 +55,7 @@ public class OpenGraph
     */
     public OpenGraph()
 	{
-		pageNamespaces = new ArrayList<OpenGraphNamespace>();
+        pageNamespaces = new ArrayList<OpenGraphNamespace>();
         metaAttributes = new Hashtable<String, ArrayList<MetaElement>>();
         hasChanged = false;
         isImported = false;
@@ -61,14 +68,53 @@ public class OpenGraph
      * @throws java.io.IOException If a network error occurs, the HTML parser will throw an IO Exception
      * @throws java.lang.Exception A generic exception is throw if the specific page fails to conform to the basic Open Graph standard as define by the constant REQUIRED_META
      */
-    public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception {
+    public OpenGraph(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception 
+    {
         this();
+        System.setProperty("http.agent", "");
+        System.setProperty("User-Agent", "");
+        inspectURL(url, ignoreSpecErrors);
+    }
+
+
+    public void inspectURL(String url, boolean ignoreSpecErrors) throws java.io.IOException, Exception 
+    {
         isImported = true;
 
-
+        // first run the URL through google's safe browsing API
+        int safeBrowsingCode = isURLSafe(url); 
+        if (safeBrowsingCode > 0) {
+            if (safeBrowsingCode == 1) {
+                throw new Exception("phishing");
+            } else if (safeBrowsingCode == 2) {
+                throw new Exception("malware");
+            } else if (safeBrowsingCode == 3) {
+                throw new Exception("phishing,malware");
+            }
+        }
+        
         // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
         URL pageURL = new URL(url);
-        URLConnection siteConnection = pageURL.openConnection();
+        //HttpURLConnection.setFollowRedirects(true);
+        CookieHandler.setDefault(new CookieManager());
+        HttpURLConnection siteConnection = (HttpURLConnection)pageURL.openConnection();
+        if (url.indexOf("manta.com") > -1) {
+            siteConnection.setRequestProperty("User-Agent", "Manta OG Scraper");
+            System.out.println("set the user agent to Manta OG Scraper");
+        }
+        int responseCode = siteConnection.getResponseCode();
+        if (responseCode != 200) {
+            // if we didn't get success, the site may be blocking our attempt to open
+            // a connection not as a browser.  Try again with faking the user-agent
+            siteConnection = (HttpURLConnection)pageURL.openConnection();
+            siteConnection.setRequestProperty("User-Agent", " Mozilla/5.0 (Windows NT 6.1; WOW64)");
+            responseCode = siteConnection.getResponseCode();
+            if (responseCode != 200) {
+                // give up
+                throw new Exception("Failed to connect to url");
+            }
+        }
+        String contentType = siteConnection.getContentType();
         Charset charset = getConnectionCharset(siteConnection);
         BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream(), charset));
         String inputLine;
@@ -115,25 +161,105 @@ public class OpenGraph
 		if (!hasOGspec)
 			pageNamespaces.add(new OpenGraphNamespace("og", "http:// ogp.me/ns#"));
 
+        // check for an image URL and pre-populate some content information
+        if ((contentType != null) && contentType.startsWith("image/")) {
+            OpenGraphNamespace ns = new OpenGraphNamespace("none", "none"); // don't worry about the namespace
+            setProperty(ns, "type", contentType);
+            setProperty(ns, "image", url);
+        }
+
         // open only the meta tags
         TagNode[] metaData = pageData.getElementsByName("meta", true);
         for (TagNode metaElement : metaData)
 		{
+        	boolean foundMatchWithNamespace = false;
+			String target = null;
+            if (metaElement.hasAttribute("property"))
+                target = "property";
+            else if (metaElement.hasAttribute("name"))
+                target = "name";
+            else if (metaElement.hasAttribute("itemprop"))
+                target = "itemprop";
+
+			String content = metaElement.getAttributeByName("content");
+			// if content is null, try checking value attribute instead
+			if (content == null ) {
+				content = metaElement.getAttributeByName("value");
+			}
+
 			for (OpenGraphNamespace namespace : pageNamespaces)
 			{
-				String target = null;
-	            if (metaElement.hasAttribute("property"))
-	                target = "property";
-	            else if (metaElement.hasAttribute("name"))
-	                target = "name";
-
 				if (target != null && metaElement.getAttributeByName(target).startsWith(namespace.getPrefix() + ":"))
 				{
-					setProperty(namespace, metaElement.getAttributeByName(target), metaElement.getAttributeByName("content"));
+					foundMatchWithNamespace = true;
+					setProperty(namespace, metaElement.getAttributeByName(target), content);
 					break;
 				}
 			}
+			if (!foundMatchWithNamespace) {
+				if (target != null) {
+					// just set it without a namespace...we'll use whatever information we can get, even if it doesn't
+					// conform to OpenGraph specs (at the time of this change, amazon.com requires it)
+					setProperty(new OpenGraphNamespace("none", "none"), metaElement.getAttributeByName(target), content);
+				}
+			}
         }
+
+        // look for non-opengraph info to get more information
+        // (title, type, image, description)
+        if (this.getContent("title") == null) {
+            TagNode[] titleData = pageData.getElementsByName("title", true);
+            for (TagNode metaElement : titleData) {
+                StringBuffer content = metaElement.getText();
+                setProperty(new OpenGraphNamespace("none", "none"), "title", content.toString());
+            }
+        }
+        if (this.getContent("image") == null) {
+            try {
+                BufferedReader bodydis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream(), charset));
+                StringBuffer bodyContents = new StringBuffer("<html><body>");
+    
+                // Loop through each line, looking for img tags
+                int startIndex;
+                int endIndex;
+                int imageCount = 0;
+                while ((inputLine = bodydis.readLine()) != null) {
+                    startIndex = inputLine.indexOf("<img");
+                    if (startIndex >=0 ) {
+                        endIndex = inputLine.indexOf(">", startIndex);
+                        if (endIndex >= 0) {
+                            inputLine = inputLine.substring(startIndex, endIndex + 1);
+                            bodyContents.append(inputLine + "\r\n");
+                            imageCount++;
+                            // just get the first 15
+                            if (imageCount >= 15) {
+                                break;
+                            }
+                        }
+                    }
+                    headContents.append(inputLine + "\r\n");
+                }
+                bodyContents.append("</body></html>");
+    
+                // parse the string HTML
+                TagNode bodyData = cleaner.clean(bodyContents.toString());
+                TagNode[] imageData = bodyData.getElementsByName("img", true);
+                HashMap<String,String> imagesHash = new HashMap<String,String>();
+                for (TagNode metaElement : imageData) {
+                    String content = metaElement.getAttributeByName("src");
+                    if ((content != null) && (content.length() > 0)) {
+                        if (!imagesHash.containsKey(content)) {
+                            setProperty(new OpenGraphNamespace("none", "none"), "image", content);
+                            imagesHash.put(content, "true");
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // if we fail here, no big deal...just keep going
+                e.printStackTrace();
+            }
+        }
+        
 
         /**
          * Check that page conforms to Open Graph protocol
@@ -152,13 +278,15 @@ public class OpenGraph
          */
         baseType = null;
 		String currentType = getContent("type");
-		// some apps use their OG namespace as a prefix
-		for (OpenGraphNamespace ns : pageNamespaces)
-		{
-			if (currentType.startsWith(ns.getPrefix() + ":"))
+		if (currentType != null) {
+			// some apps use their OG namespace as a prefix
+			for (OpenGraphNamespace ns : pageNamespaces)
 			{
-				currentType = currentType.replaceFirst(ns.getPrefix() + ":","");
-				break; // done here
+				if (currentType.startsWith(ns.getPrefix() + ":"))
+				{
+					currentType = currentType.replaceFirst(ns.getPrefix() + ":","");
+					break; // done here
+				}
 			}
 		}
         for (String base : BASE_TYPES.keySet())
@@ -250,7 +378,7 @@ public class OpenGraph
      * @return Base type as defined by specification, null otherwise
      */
     public String getBaseType()
-	{
+    {
         return baseType;
     }
 
@@ -260,7 +388,7 @@ public class OpenGraph
      * @return Returns the value of the first property defined, null otherwise
      */
     public String getContent(String property)
-	{
+    {
         if (metaAttributes.containsKey(property) && metaAttributes.get(property).size() > 0)
 			return metaAttributes.get(property).get(0).getContent();
 		else
@@ -272,7 +400,7 @@ public class OpenGraph
      * @return An array of all currently defined properties
      */
     public MetaElement[] getProperties()
-	{
+    {
 		ArrayList<MetaElement> allElements = new ArrayList<MetaElement>();
         for (ArrayList<MetaElement> collection : metaAttributes.values())
 			allElements.addAll(collection);
@@ -286,7 +414,7 @@ public class OpenGraph
      * @return An array of all currently defined properties
      */
     public MetaElement[] getProperties(String property)
-	{
+    {
 		if (metaAttributes.containsKey(property))
 		{
 			ArrayList target = metaAttributes.get(property);
@@ -301,7 +429,7 @@ public class OpenGraph
      * @return The address to the Open Graph object page
      */
     public String getOriginalUrl()
-	{
+    {
         return pageUrl;
     }
 
@@ -311,7 +439,7 @@ public class OpenGraph
      * @return An array of meta elements as Strings
      */
     public String[] toHTML()
-	{
+    {
         // allocate the array
         ArrayList<String> returnHTML = new ArrayList<String>();
 
@@ -332,7 +460,7 @@ public class OpenGraph
      * @return An array of meta elements as Strings
      */
     public String[] toXHTML()
-	{
+    {
         // allocate the array
         ArrayList<String> returnHTML = new ArrayList<String>();
 
@@ -355,16 +483,18 @@ public class OpenGraph
      * @param content The value or contents of the property to be set
      */
     public void setProperty(OpenGraphNamespace namespace, String property, String content)
-	{
+    {
         if (!pageNamespaces.contains(namespace))
 			pageNamespaces.add(namespace);
 
 		property = property.replaceAll(namespace.getPrefix() + ":", "");
 		MetaElement element = new MetaElement(namespace, property, content);
+		
 		if (!metaAttributes.containsKey(property))
 			metaAttributes.put(property, new ArrayList<MetaElement>());
 
 		metaAttributes.get(property).add(element);
+
     }
 
     /**
@@ -372,15 +502,26 @@ public class OpenGraph
      * @param property The og:XXXX where XXXX is the property you wish to remove
      */
     public void removeProperty(String property)
-	{
+    {
         metaAttributes.remove(property);
+    }
+
+    /**
+     * Add a namespace to check for during inspection
+     * @param prefix The namespace prefix of the content to search for
+     * @param namespace The namespace of the content to search for
+     */
+    public void addNamespace(String prefix, String namespace) 
+    {
+        pageNamespaces.add(new OpenGraphNamespace(prefix, namespace));
     }
 
     /**
      * Obtain the underlying HashTable
      * @return The underlying structure as a Hashtable
      */
-    public Hashtable<String, ArrayList<MetaElement>> exposeTable() {
+    public Hashtable<String, ArrayList<MetaElement>> exposeTable() 
+    {
         return metaAttributes;
     }
 
@@ -389,7 +530,7 @@ public class OpenGraph
      * @return True if the object is from a web page, false otherwise
      */
     public boolean isFromWeb()
-	{
+    {
         return isImported;
     }
 
@@ -399,7 +540,73 @@ public class OpenGraph
      * @return True True if the object has been modified, false otherwise
      */
     public boolean hasChanged()
-	{
+    {
         return hasChanged;
     }
+    
+    /**
+     * 
+     * @param requestURL    the URL to check for safety
+     * @return              0 if safe, 1 if on the phishing list, 2 if on the malware list, 3 if on both
+     * @throws Exception
+     */
+    private int isURLSafe(String requestURL) throws Exception {
+
+        int returnCode = 0;
+        String request = "https://sb-ssl.google.com/safebrowsing/api/lookup?client=api&apikey=ABQIAAAA8HLIrXcnY3txHnAjvgTKhhQwRV2HlHZpcnoi9WCslwMynZl_5g&appver=1.0&pver=3.0&url=";
+        try {
+            request += URLEncoder.encode(requestURL, "UTF-8");
+        } catch (UnsupportedEncodingException uee) {
+            throw uee;
+        }
+        URL url;
+        HttpURLConnection conn;
+        BufferedReader rd = null;
+        String line;
+        boolean isPhishing = false;
+        boolean isMalware = false;
+        try {
+           url = new URL(request);
+           conn = (HttpURLConnection) url.openConnection();
+           conn.setRequestMethod("GET");
+           rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+           if (conn.getResponseCode() == 200) {
+               while ((line = rd.readLine()) != null) {
+                   if (line.contains("phishing")) {
+                       isPhishing = true;
+                   }
+                   if (line.contains("malware")) {
+                       isMalware = true;
+                   }
+               }
+           }
+        } finally {
+            if (rd != null) {
+                rd.close();
+            }
+        }
+
+        if (isPhishing) {
+            returnCode = 1;
+        }
+        if (isMalware) {
+            returnCode += 2;
+        }
+        
+        return returnCode;
+    }
+
+//    public static void main(String [] args)
+//	{
+//		try
+//		{
+//			String uri = args[0];
+//			OpenGraph page = new OpenGraph();
+//		    page.inspectURL(uri, true);
+//		}
+//		catch (Exception e)
+//		{
+//			e.printStackTrace();
+//		}
+//	}
 }
