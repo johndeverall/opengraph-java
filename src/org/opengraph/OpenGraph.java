@@ -153,14 +153,17 @@ public class OpenGraph
         baseType = null;
 		String currentType = getContent("type");
 		// some apps use their OG namespace as a prefix
-		for (OpenGraphNamespace ns : pageNamespaces)
-		{
-			if (currentType.startsWith(ns.getPrefix() + ":"))
-			{
-				currentType = currentType.replaceFirst(ns.getPrefix() + ":","");
-				break; // done here
-			}
-		}
+        if (currentType != null)
+        {
+    		for (OpenGraphNamespace ns : pageNamespaces)
+    		{
+    			if (currentType.startsWith(ns.getPrefix() + ":"))
+    			{
+    				currentType = currentType.replaceFirst(ns.getPrefix() + ":","");
+    				break; // done here
+    			}
+    		}
+        }
         for (String base : BASE_TYPES.keySet())
 		{
             String[] baseList = BASE_TYPES.get(base);

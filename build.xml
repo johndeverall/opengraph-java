@@ -20,6 +20,7 @@
   <path id="junit.class.path">
     <pathelement location="libs/junit.jar"/>
     <pathelement location="libs/hamcrest-core.jar"/>
+    <pathelement location="libs/htmlcleaner-2.8.jar"/>
     <pathelement location="${classes.dir}"/>
   </path>
   <!-- Deletes the existing build, docs and dist directory-->
@@ -36,7 +37,7 @@
   </target>
   <!-- Compiles the java code (including the usage of library for JUnit -->
   <target depends="clean, makedir" name="compile">
-    <javac destdir="${classes.dir}" srcdir="${src.dir}">
+    <javac destdir="${classes.dir}" srcdir="${src.dir}" debug="on">
       <classpath refid="junit.class.path"/>
       <classpath refid="build.classpath"/>
     </javac>
