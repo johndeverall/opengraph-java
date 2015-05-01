@@ -6,7 +6,7 @@ Due to the lack of useful native DOM parsers this class implements the HTMLClean
 ## Usage ##
 In this example we will fetch the og:title and og:type contents, while ignoring any errors if this page does not comply with the Open Graph protocol standard (set in the constructor via true)
 
-> OpenGraph testPage = new OpenGraph("http://uk.rottentomatoes.com/m/1217700-kick_ass", true);
+> OpenGraph testPage = new OpenGraph("http://www.rottentomatoes.com/m/back_to_the_future/", true);
 
 > String title = testPage.getContent("title");
 
