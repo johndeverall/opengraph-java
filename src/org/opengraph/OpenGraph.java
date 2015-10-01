@@ -4,6 +4,7 @@ import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.TagNode;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 /**
  * A Java object representation of an Open Graph enabled webpage.
@@ -70,7 +72,10 @@ public class OpenGraph
         URL pageURL = new URL(url);
         URLConnection siteConnection = pageURL.openConnection();
         Charset charset = getConnectionCharset(siteConnection);
-        BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream(), charset));
+        InputStream is = siteConnection.getInputStream();
+        if ("gzip".equals(siteConnection.getContentEncoding()))
+            is = new GZIPInputStream(is);
+        BufferedReader dis = new BufferedReader(new InputStreamReader(is, charset));
         String inputLine;
         StringBuffer headContents = new StringBuffer();
 
