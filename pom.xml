@@ -4,6 +4,8 @@
 	<groupId>OpenGraph</groupId>
 	<artifactId>OpenGraph</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+	<name>A Facebook OpenGraph implementation for Java</name>
+	<description>OpenGraph for Java</description>
 
 	<dependencies>
 		<dependency>
