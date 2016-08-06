@@ -2,3 +2,4 @@
 bin/*
 testreport/*
 examples/backtothefuture/build/*
+target/*
