@@ -1,7 +1,5 @@
 package org.opengraph;
 
-import org.htmlcleaner.HtmlCleaner;
-import org.htmlcleaner.TagNode;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -12,6 +10,13 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+
 
 /**
  * A Java object representation of an Open Graph enabled webpage.
@@ -88,51 +93,46 @@ public class OpenGraph
         }
 
         String headContentsStr = headContents.toString();
-        HtmlCleaner cleaner = new HtmlCleaner();
+
         // parse the string HTML
-        TagNode pageData = cleaner.clean(headContentsStr);
+        Document parsedDocument = Jsoup.parse(headContentsStr);
+        // read in the declared namespaces
+        Elements headElement = parsedDocument.getElementsByTag("head");
 
-		// read in the declared namespaces
-		boolean hasOGspec = false;
-		TagNode headElement = pageData.findElementByName("head", true);
-		if (headElement.hasAttribute("prefix"))
-		{
-			String namespaceData = headElement.getAttributeByName("prefix");
-			Pattern pattern = Pattern.compile("(([A-Za-z0-9_]+):\\s+(http:\\/\\/ogp.me\\/ns(\\/\\w+)*#))\\s*");
-			Matcher matcher = pattern.matcher(namespaceData);
-			while (matcher.find())
-			{
+        boolean hasOGspec = false;
+        if (headElement.hasAttr("prefix")) {
+            String namespaceData = headElement.attr("prefix");
+            Pattern pattern = Pattern.compile("(([A-Za-z0-9_]+):\\s+(http:\\/\\/ogp.me\\/ns(\\/\\w+)*#))\\s*");
+            Matcher matcher = pattern.matcher(namespaceData);
+            while (matcher.find()) {
                 String prefix = matcher.group(2);
-				String documentURI = matcher.group(3);
-				pageNamespaces.add(new OpenGraphNamespace(prefix, documentURI));
-				if (prefix.equals("og"))
-					hasOGspec = true;
+                String documentURI = matcher.group(3);
+                pageNamespaces.add(new OpenGraphNamespace(prefix, documentURI));
+                if (prefix.equals("og"))
+                    hasOGspec = true;
             }
-		}
+        }
 
-		// some pages do not include the new OG spec
-		// this fixes compatibility
-		if (!hasOGspec)
-			pageNamespaces.add(new OpenGraphNamespace("og", "http:// ogp.me/ns#"));
+        // some pages do not include the new OG spec
+        // this fixes compatibility
+        if (!hasOGspec)
+            pageNamespaces.add(new OpenGraphNamespace("og", "http:// ogp.me/ns#"));
 
         // open only the meta tags
-        TagNode[] metaData = pageData.getElementsByName("meta", true);
-        for (TagNode metaElement : metaData)
-		{
-			for (OpenGraphNamespace namespace : pageNamespaces)
-			{
-				String target = null;
-	            if (metaElement.hasAttribute("property"))
-	                target = "property";
-	            else if (metaElement.hasAttribute("name"))
-	                target = "name";
+        Elements metaData = parsedDocument.getElementsByTag("meta");
+        for (Element metaElement : metaData) {
+            for (OpenGraphNamespace namespace : pageNamespaces) {
+                String target = null;
+                if (metaElement.hasAttr("property"))
+                    target = "property";
+                else if (metaElement.hasAttr("name"))
+                    target = "name";
 
-				if (target != null && metaElement.getAttributeByName(target).startsWith(namespace.getPrefix() + ":"))
-				{
-					setProperty(namespace, metaElement.getAttributeByName(target), metaElement.getAttributeByName("content"));
-					break;
-				}
-			}
+                if (target != null && metaElement.attr(target).startsWith(namespace.getPrefix() + ":")) {
+                    setProperty(namespace, metaElement.attr(target), metaElement.attr("content"));
+                    break;
+                }
+            }
         }
 
         /**
