@@ -38,9 +38,71 @@
             <distribution>manual</distribution>
         </license>
     </licenses>
+    <developers>
+        <developer>
+            <name>John Deverall</name>
+            <email>johndeverall@gmail.com</email>
+            <url>https://github.com/johndeverall</url>
+            <organization>John Deverall</organization>
+            <organizationUrl>https://github.com/johndeverall</organizationUrl>
+            <roles>
+                <role>developer</role>
+            </roles>
+            <timezone>Pacific/Auckland</timezone>
+        </developer>
+    </developers>
+    <contributors>
+        <contributor>
+            <name>Callum Jones</name>
+            <url>https://github.com/callumj</url>
+            <organization>Callum Jones</organization>
+            <organizationUrl>https://github.com/callumj/</organizationUrl>
+            <roles>
+                <role>contributor</role>
+            </roles>
+            <timezone>America/Los_Angeles</timezone>
+        </contributor>
+        <contributor>
+            <name>Ruslan Khmelyuk</name>
+            <email>ruslan@khmelyuk.xyz</email>
+            <url>http://www.khmelyuk.com/</url>
+            <organization>Ruslan Khmelyuk</organization>
+            <organizationUrl>http://www.khmelyuk.com/</organizationUrl>
+            <roles>
+                <role>contributor</role>
+            </roles>
+            <timezone>America/Los_Angeles</timezone>
+        </contributor>
+        <contributor>
+            <name>Niall Kennedy</name>
+            <email>niall@niallkennedy.com</email>
+            <url>https://www.niallkennedy.com/blog/</url>
+            <organization>Niall Kennedy</organization>
+            <organizationUrl>https://www.niallkennedy.com/blog/</organizationUrl>
+            <roles>
+                <role>contributor</role>
+            </roles>
+            <timezone>America/Los_Angeles</timezone>
+            <properties>
+                <twitter>@niall</twitter>
+            </properties>
+        </contributor>
+        <contributor>
+            <name>Timothy Stone</name>
+            <email>javafueled@gmail.com</email>
+            <url>https://github.com/timothystone</url>
+            <organization>Timothy Stone</organization>
+            <organizationUrl>https://www.anothercaffeinatedday.com/</organizationUrl>
+            <roles>
+                <role>contributor</role>
+            </roles>
+            <timezone>America/New_York</timezone>
+        </contributor>
+    </contributors>
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
             </plugin>
