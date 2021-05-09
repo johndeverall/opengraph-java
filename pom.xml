@@ -1,9 +1,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>OpenGraph</groupId>
-    <artifactId>OpenGraph</artifactId>
+    <groupId>opengraph</groupId>
+    <artifactId>opengraph</artifactId>
     <version>0.0.2-SNAPSHOT</version>
+    <packaging>pom</packaging>
     <name>A Facebook OpenGraph implementation for Java</name>
     <description>OpenGraph for Java</description>
 
@@ -12,6 +13,11 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <modules>
+        <module>plugin</module>
+        <module>examples</module>
+    </modules>
     <dependencies>
         <dependency>
             <groupId>org.hamcrest</groupId>
@@ -26,9 +32,10 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.12</version>
+            <version>4.13.1</version>
         </dependency>
     </dependencies>
+
     <licenses>
         <license>
             <name>BSD-3-Clause</name>
@@ -38,6 +45,7 @@
             <distribution>manual</distribution>
         </license>
     </licenses>
+
     <developers>
         <developer>
             <name>John Deverall</name>
@@ -51,6 +59,7 @@
             <timezone>Pacific/Auckland</timezone>
         </developer>
     </developers>
+
     <contributors>
         <contributor>
             <name>Callum Jones</name>
@@ -99,6 +108,7 @@
             <timezone>America/New_York</timezone>
         </contributor>
     </contributors>
+
     <build>
         <plugins>
             <plugin>
@@ -108,4 +118,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>
