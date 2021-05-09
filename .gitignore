@@ -1,5 +1,14 @@
 #Ignore
-bin/*
-testreport/*
-examples/backtothefuture/build/*
-target/*
+bin/
+testreport/
+examples/backtothefuture/build/
+
+## Maven
+target/
+
+## IntelliJ
+*.iml
+.idea
+
+## Mac OS X
+.DS_Store
