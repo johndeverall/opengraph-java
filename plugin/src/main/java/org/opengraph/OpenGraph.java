@@ -2,8 +2,8 @@ package org.opengraph;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -67,8 +67,18 @@ public class OpenGraph {
 
 
     // download the (X)HTML content, but only up to the closing head tag. We do not want to waste resources parsing irrelevant content
+    System.out.println(url);
     URL pageURL = new URL(url);
-    URLConnection siteConnection = pageURL.openConnection();
+    HttpURLConnection siteConnection = (HttpURLConnection) pageURL.openConnection();
+    siteConnection.connect();
+    if(siteConnection.getHeaderField("Location") != null )
+    {
+      String redirect = siteConnection.getHeaderField("Location");
+      siteConnection.disconnect();
+      pageURL = new URL(redirect);
+      siteConnection = (HttpURLConnection) pageURL.openConnection();
+      siteConnection.connect();
+    }
     Charset charset = getConnectionCharset(siteConnection);
     BufferedReader dis = new BufferedReader(new InputStreamReader(siteConnection.getInputStream(), charset));
     String inputLine;
@@ -184,7 +194,7 @@ public class OpenGraph {
    * @return the Charset object for response charset name;
    * if it's not found then the default charset.
    */
-  private static Charset getConnectionCharset(URLConnection connection) {
+  private static Charset getConnectionCharset(HttpURLConnection connection) {
     String contentType = connection.getContentType();
     if (contentType != null && contentType.length() > 0) {
       contentType = contentType.toLowerCase();
